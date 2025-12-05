@@ -162,7 +162,33 @@ for n=runthese
             [~,~,BreathSnoreTable2]=GetNonOvlappedVE(BreathDataTable,BreathSnoreTable);
             clear BreathSnoreTable
         end
-        
+
+        %% Optional export of breath-level tables to working directory
+        if isfield(settings,'SaveBreathTablesToWorkDir') && settings.SaveBreathTablesToWorkDir
+            patientStem = sprintf('%s_%03d', settings.savename, n);
+            workdir     = pwd;
+
+            if exist('BreathDataTable2','var') && istable(BreathDataTable2) && ~isempty(BreathDataTable2)
+                save(fullfile(workdir, [patientStem '_BreathDataTableLong.mat']), 'BreathDataTable2', '-v7.3');
+                try
+                    writetable(BreathDataTable2, fullfile(workdir, [patientStem '_BreathDataTableLong.csv']));
+                catch me
+                    warning('EventAnalysis:SaveBreathTableLong', ...
+                        'Failed to write BreathDataTableLong CSV for %s: %s', patientStem, me.message);
+                end
+            end
+
+            if exist('BreathDataTableFulls','var') && istable(BreathDataTableFulls) && ~isempty(BreathDataTableFulls)
+                save(fullfile(workdir, [patientStem '_BreathDataTableFulls.mat']), 'BreathDataTableFulls', '-v7.3');
+                try
+                    writetable(BreathDataTableFulls, fullfile(workdir, [patientStem '_BreathDataTableFulls.csv']));
+                catch me
+                    warning('EventAnalysis:SaveBreathTableFulls', ...
+                        'Failed to write BreathDataTableFulls CSV for %s: %s', patientStem, me.message);
+                end
+            end
+        end
+
         %% Adjust event start and stop times
         % Adjust start and stop times of events based on ventilation
 %         AdjustEventTiming = 1;

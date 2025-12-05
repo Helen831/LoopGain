@@ -89,6 +89,12 @@ settingsDefault.UseAutoScoredRespEventsForLG=0;     %turn this on to score respi
 settingsDefault.DriftEstimation=1;
 settingsDefault.parallelAnalysis = 0;
 
+%% DATA EXPORT OPTIONS
+settingsDefault.SaveBreathTablesToWorkDir = 0;  % when 1, EventAnalysis will write breath-level tables to pwd
+settingsDefault.SaveSummaryToWorkDir      = 0;  % when 1, SummaryAnalysis will write summary tables to pwd
+settingsDefault.SaveWinTToWorkDir         = 0;  % when 1, Analysis will write WinT tables to pwd
+settingsDefault.SaveVentCurvesToWorkDir   = 0;  % when 1, Analysis will export per-window ventilation curves to pwd
+
 
 %% Other settings that are intentionally not defined by default, but listed here
 %settingsDefault.lowVEareObstructiveEvents = 0.5; %will force small breaths to be scored as "obstructed" (unknown drive) for phenotyping

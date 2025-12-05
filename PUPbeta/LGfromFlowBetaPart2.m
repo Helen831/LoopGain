@@ -1,8 +1,9 @@
 % This version uses LG calculation software neatened for paper publication....
-function [WinInfo,BreathDataTable] = ...
+function [WinInfo,BreathDataTable,VentilationCurve] = ...
     LGfromFlowBetaPart2(SigT,BreathDataTable,Vflow_out)
 %% global variables
 global n winNum settings ChannelsList
+VentilationCurve = [];
 
 %% local settings
 % clocktimestart = clock;
@@ -962,6 +963,12 @@ end
     %% upsample VE
     VI1 = interp1(BB_t-BB_t(1),VI,0:(BB_t(end)-BB_t(1)),'previous')';
     VIsd = nanstd(detrend(VI1));
+
+    VentilationCurve.windowIndex = winNum;
+    VentilationCurve.windowStart = BB_t(1);
+    VentilationCurve.time        = (0:(BB_t(end)-BB_t(1)))';
+    VentilationCurve.ventilation = VI1;
+    VentilationCurve.Veupnea     = Veupnea;
     
     %%
     MoreInfo = [1-FitQual(2),VIsd];

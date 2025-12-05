@@ -396,7 +396,7 @@ try
     
     %% run windows
     %clear AnalysisIndex LGplusinfo EventsInfo LG_QualityInfo DataOut ArousalDat fitQual MiscEpochData
-    [WinT,BreathDataTable,BreathFLDataTable,BreathSnoreTable,LocalSignals,SigT2] ...
+    [WinT,BreathDataTable,BreathFLDataTable,BreathSnoreTable,LocalSignals,VentilationCurves,SigT2] ...
         = WindowSelectAndRun(SigT,CPAPoff,CPAP); %pi/16
     %EvtsData added as input for function to calculate position per window
     
@@ -406,7 +406,7 @@ try
     end
     
     %% set data to save
-    datatosavelist={'WinT','AnalysisIndex','LGplusinfo','EventsInfo','LG_QualityInfo','DataOut','ArousalDat','fitQual','SleepData','CPAPData','StoNData','BreathDataTable','BreathFLDataTable','BreathSnoreTable','Evts','SpikesInfo'};
+    datatosavelist={'WinT','AnalysisIndex','LGplusinfo','EventsInfo','LG_QualityInfo','DataOut','ArousalDat','fitQual','SleepData','CPAPData','StoNData','BreathDataTable','BreathFLDataTable','BreathSnoreTable','Evts','SpikesInfo','VentilationCurves'};
     if ~isempty(SigT2)
         datatosavelist = [datatosavelist,'SigT2'];
     end
@@ -462,6 +462,62 @@ try
             
             displaytext=['Finished Saving Data to ' settings.savename '_' num2str(n) '.mat'];
             disp(displaytext);
+
+            if isfield(settings,'SaveWinTToWorkDir') && settings.SaveWinTToWorkDir
+                patientStem = sprintf('%s_%03d', settings.savename, n);
+                workdir     = pwd;
+
+                if exist('WinT','var') && istable(WinT) && ~isempty(WinT)
+                    save(fullfile(workdir, [patientStem '_WinT.mat']), 'WinT', '-v7.3');
+                    try
+                        writetable(WinT, fullfile(workdir, [patientStem '_WinT.csv']));
+                    catch me
+                        warning('Analysis:SaveWinT', ...
+                            'Failed to write WinT CSV for %s: %s', patientStem, me.message);
+                    end
+                end
+            end
+
+            if isfield(settings,'SaveVentCurvesToWorkDir') && settings.SaveVentCurvesToWorkDir
+                patientStem = sprintf('%s_%03d', settings.savename, n);
+                workdir     = pwd;
+
+                if exist('VentilationCurves','var') && ~isempty(VentilationCurves)
+                    try
+                        save(fullfile(workdir, [patientStem '_VentCurves.mat']), 'VentilationCurves', '-v7.3');
+                    catch me
+                        warning('Analysis:SaveVentCurves', ...
+                            'Failed to write VentilationCurves MAT for %s: %s', patientStem, me.message);
+                    end
+
+                    for k = 1:numel(VentilationCurves)
+                        curve = VentilationCurves{k};
+                        if ~isstruct(curve) || ~isfield(curve,'time') || isempty(curve.time)
+                            continue;
+                        end
+
+                        try
+                            curveTable = table( ...
+                                repmat(k, numel(curve.time), 1), ...
+                                curve.time(:), ...
+                                curve.ventilation(:), ...
+                                'VariableNames', {'Window', 'Time_s', 'Ventilation'} );
+
+                            if isfield(curve,'windowStart')
+                                curveTable.WindowStart_s = repmat(curve.windowStart, height(curveTable), 1);
+                            end
+
+                            writetable(curveTable, fullfile(workdir, ...
+                                sprintf('%s_Win%03d_VentCurve.csv', patientStem, k)));
+                        catch me
+                            warning('Analysis:SaveVentCurvesCSV', ...
+                                'Failed to write ventilation curve CSV for %s window %d: %s', ...
+                                patientStem, k, me.message);
+                        end
+                    end
+                end
+            end
+
             clear datatosave
             
             %if save local signals
@@ -502,12 +558,12 @@ try close(figure(2)); catch; end
 end
 
 %% Window Selection
-function [WinT,BreathDataTable,BreathFLDataTable,BreathSnoreTable,LocalSignals,SigT2] = ...
+function [WinT,BreathDataTable,BreathFLDataTable,BreathSnoreTable,LocalSignals,VentilationCurves,SigT2] = ...
     WindowSelectAndRun(SigT,CPAPoff,CPAP)
 
 %% A bunch of variables no longer get assigned in this function and this
 % causes and error so I am assigned NaNs to them here
-LGplusinfo=nan; EventsInfo=nan; LG_QualityInfo=nan; DataOut=nan; 
+LGplusinfo=nan; EventsInfo=nan; LG_QualityInfo=nan; DataOut=nan;
 ArousalDat=nan; fitQual=nan;
 %global settings handletext n winNum ChannelsList ChannelsFs
 global settings n winNum ChannelsList ChannelsFs Evts Info
@@ -542,6 +598,7 @@ clear allsleep CPAPoff_
     
 
 winnumrange=1:1:numwind;
+VentilationCurves = cell(numwind,1);
 if isfield(settings,'rerunspecificwindows') && ~isempty(settings.rerunspecificwindows)
     disp('Warning: rerun specific windows on');
     winnumrange=settings.rerunspecificwindows;
@@ -776,12 +833,14 @@ for winNum=winnumrange
             BreathSnoreTable{winNum} = NaN;
             LocalSignals{winNum} = NaN;
             Vflow_out{winNum} = [];
+            VentilationCurves{winNum} = [];
         end
     else
         BreathDataTable{winNum} = NaN;
         BreathFLDataTable{winNum} = NaN;
         BreathSnoreTable{winNum} = NaN;
         LocalSignals{winNum} = NaN;
+        VentilationCurves{winNum} = [];
     end % if criteria for LGfromFlow analysis
 	
     % EAS added on 2022-01-04 to detect mouth breathing
@@ -939,20 +998,21 @@ else
                 disp(displaytext);
 
                 try
-                    [WinInfo(winNum,:),BreathDataTable{winNum}]= ...
+                    [WinInfo(winNum,:),BreathDataTable{winNum},VentilationCurves{winNum}]= ...
                         LGfromFlowBetaPart2(SigT(lefti:righti,:),BreathDataTable{winNum},Vflow_out{winNum});
                     
                 catch me
-                    disp(['error evaluating LGfromFlowPart2 or saving its data: ' me.message])                    
+                    disp(['error evaluating LGfromFlowPart2 or saving its data: ' me.message])
                     if isfield(settings,'HaltOnErrors') && settings.HaltOnErrors==1
-                        keyboard                        
-						me.getReport
+                        keyboard
+                                                me.getReport
                     end
-					% should probably be setting outputs to NaNs, same as else case
+                                        % should probably be setting outputs to NaNs, same as else case
                     WinInfo(winNum,1:22)=NaN;
                     BreathDataTable{winNum} = NaN;
                     BreathFLDataTable{winNum} = NaN;
                     BreathSnoreTable{winNum} = NaN;
+                    VentilationCurves{winNum} = [];
                 end
             else
                 %disp(['ignore window ' num2str(n) '/' num2str(winNum) ', allsleep=' num2str(allsleep(winNum)) ', CPAPoff=' num2str(CPAPoff(winNum))]);
@@ -960,6 +1020,7 @@ else
                 BreathDataTable{winNum} = NaN;
                 BreathFLDataTable{winNum} = NaN;
                 BreathSnoreTable{winNum} = NaN;
+                VentilationCurves{winNum} = [];
             end % if criteria for LGfromFlow analysis
             
         end % window loop

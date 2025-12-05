@@ -429,6 +429,30 @@ SummaryAnalysisTable
 SummaryAnalysisTableN = array2table([DataNArray]);
 SummaryAnalysisTableN.Properties.VariableNames = varlist;
 
+%% Optional export of summary table to working directory
+if isfield(settings,'SaveSummaryToWorkDir') && settings.SaveSummaryToWorkDir
+    workdir = pwd;
+    outstem = sprintf('%s_SummaryAnalysisTable', settings.savename);
+
+    save(fullfile(workdir, [outstem '.mat']), 'SummaryAnalysisTable', '-v7.3');
+    try
+        writetable(SummaryAnalysisTable, fullfile(workdir, [outstem '.csv']));
+    catch me
+        warning('SummaryAnalysis:SaveTable', ...
+            'Failed to write SummaryAnalysisTable CSV for %s: %s', outstem, me.message);
+    end
+
+    if exist('SummaryAnalysisTableN','var') && istable(SummaryAnalysisTableN)
+        save(fullfile(workdir, [outstem 'N.mat']), 'SummaryAnalysisTableN', '-v7.3');
+        try
+            writetable(SummaryAnalysisTableN, fullfile(workdir, [outstem 'N.csv']));
+        catch me
+            warning('SummaryAnalysis:SaveTableN', ...
+                'Failed to write SummaryAnalysisTableN CSV for %s: %s', outstem, me.message);
+        end
+    end
+end
+
 %% Make Compare Table
 if exist('DataArray_compare') && settings.runcompare==1
     SummaryAnalysisTable_compare = array2table([DataArray_compare]);

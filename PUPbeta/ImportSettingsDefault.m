@@ -94,6 +94,7 @@ settingsDefault.SaveBreathTablesToWorkDir = 0;  % when 1, EventAnalysis will wri
 settingsDefault.SaveSummaryToWorkDir      = 0;  % when 1, SummaryAnalysis will write summary tables to pwd
 settingsDefault.SaveWinTToWorkDir         = 0;  % when 1, Analysis will write WinT tables to pwd
 settingsDefault.SaveVentCurvesToWorkDir   = 0;  % when 1, Analysis will export per-window ventilation curves to pwd
+settingsDefault.SaveVentCurvesCSV         = 1;  % when 1, also write per-window ventilation curve CSVs
 
 
 %% Other settings that are intentionally not defined by default, but listed here

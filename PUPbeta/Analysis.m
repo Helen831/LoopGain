@@ -490,29 +490,31 @@ try
                             'Failed to write VentilationCurves MAT for %s: %s', patientStem, me.message);
                     end
 
-                    for k = 1:numel(VentilationCurves)
-                        curve = VentilationCurves{k};
-                        if ~isstruct(curve) || ~isfield(curve,'time') || isempty(curve.time)
-                            continue;
-                        end
-
-                        try
-                            curveTable = table( ...
-                                repmat(k, numel(curve.time), 1), ...
-                                curve.time(:), ...
-                                curve.ventilation(:), ...
-                                'VariableNames', {'Window', 'Time_s', 'Ventilation'} );
-
-                            if isfield(curve,'windowStart')
-                                curveTable.WindowStart_s = repmat(curve.windowStart, height(curveTable), 1);
+                    if ~isfield(settings,'SaveVentCurvesCSV') || settings.SaveVentCurvesCSV
+                        for k = 1:numel(VentilationCurves)
+                            curve = VentilationCurves{k};
+                            if ~isstruct(curve) || ~isfield(curve,'time') || isempty(curve.time)
+                                continue;
                             end
 
-                            writetable(curveTable, fullfile(workdir, ...
-                                sprintf('%s_Win%03d_VentCurve.csv', patientStem, k)));
-                        catch me
-                            warning('Analysis:SaveVentCurvesCSV', ...
-                                'Failed to write ventilation curve CSV for %s window %d: %s', ...
-                                patientStem, k, me.message);
+                            try
+                                curveTable = table( ...
+                                    repmat(k, numel(curve.time), 1), ...
+                                    curve.time(:), ...
+                                    curve.ventilation(:), ...
+                                    'VariableNames', {'Window', 'Time_s', 'Ventilation'} );
+
+                                if isfield(curve,'windowStart')
+                                    curveTable.WindowStart_s = repmat(curve.windowStart, height(curveTable), 1);
+                                end
+
+                                writetable(curveTable, fullfile(workdir, ...
+                                    sprintf('%s_Win%03d_VentCurve.csv', patientStem, k)));
+                            catch me
+                                warning('Analysis:SaveVentCurvesCSV', ...
+                                    'Failed to write ventilation curve CSV for %s window %d: %s', ...
+                                    patientStem, k, me.message);
+                            end
                         end
                     end
                 end
